@@ -81,9 +81,7 @@ def main() :    #what do I want to solve here?
     plt.ylabel("Average Days to Ship") 
     plt.title("Monthly Average of Days to Ship by Warehouse") 
     plt.legend() 
-    plt.show() 
-    
-    
+    #plt.show() 
 
     #expected sales based on time
     #step 2: Break down the data by year
@@ -92,10 +90,21 @@ def main() :    #what do I want to solve here?
         #loop through the years
         #create new df for each year
         #sum sales for that year
+
+    sales.insert(14, 'OrderYear', [int(i.year) for i in sales["OrderDate"]], allow_duplicates=True)
+    yearlysales = sales[['OrderDate', 'OrderYear']].groupby(['OrderYear']).count().reset_index()
+    print(yearlysales)
+
     #step 3: find sales by month
         #we can loop through each year, loop through each month
         # and find total sales
         # then we have monthly sales for each month in each year 
+
+    
+    monthlyyearlysales = sales[['OrderMonth', 'OrderYear', 'OrderDate']].groupby(['OrderMonth', 'OrderYear']).count().reset_index()
+    monthlyyearlysales.drop(monthlyyearlysales[monthlyyearlysales.OrderDate < 100].index, inplace = True)
+    print(monthlyyearlysales)
+    
     #step 4: figure out which months have the highest sales,
     # but check against multiple years to make sure its a trend
         #this will come from graphing it, figure that out later
@@ -104,8 +113,6 @@ def main() :    #what do I want to solve here?
     
     #
     
-    
-    print("test")
 
 '''
 df = pd.read_csv("US_Regional_Sales_Data_PreProcessed_To_Use.csv")
