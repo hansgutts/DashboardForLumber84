@@ -12,9 +12,20 @@ def main() :    #what do I want to solve here?
 
     fig, ((ax1, ax2),(ax3, ax4)) = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 2]})
     fig.suptitle("84 Lumber Co. Dashboard")
-    fig.tight_layout()
-    plt.setp(ax1.get_xticklabels(), rotation=-30, ha='left')
     
+    plt.setp(ax1.get_xticklabels(), rotation=-30, ha='left', fontsize=8)
+    
+    sales = pd.read_csv("US_Regional_Sales_Data_PreProcessed_To_Use.csv", sep=',')
+    sales.drop(['Unnamed: 0'], axis=1, inplace=True)
+
+    sales['DaysToShip'] = [int(x[:2]) for x in sales['DaysToShip']]
+    sales['OrderDate'] = [datetime.datetime.strptime(d, "%m/%d/%Y") for d in sales['OrderDate']]
+
+    sales.insert(12, 'OrderMonth', [int(i.month) for i in sales["OrderDate"]], allow_duplicates=True)
+    sales.insert(13, 'OrderYear', [int(i.year) for i in sales["OrderDate"]], allow_duplicates=True)
+    sales.insert(14, 'Profits', [float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))) for [quan, cost, price, disc] in zip(sales["Order Quantity"],sales["Unit Cost"], sales["Unit Price"], sales["Discount Applied"])])
+
+
     #figure out late shipments by warehouse (step 1-4 done in preprocessing)
     #step 1: read in data
     #step 2: convert into date time format
@@ -24,8 +35,6 @@ def main() :    #what do I want to solve here?
     #step 6: find top performers and bottom performers
 
     #I want to do this only on the last month of data
-    sales = pd.read_csv("US_Regional_Sales_Data_PreProcessed_To_Use.csv", sep=',')
-    sales.drop(['Unnamed: 0'], axis=1, inplace=True)
     warehouses = sales.WarehouseCode.unique()
     warehousedata = []
     averages = ['AverageDaysToShip']
@@ -36,7 +45,7 @@ def main() :    #what do I want to solve here?
     for warehouse in warehouses :
         warehousevals = sales[sales['WarehouseCode'] == warehouse]
         numwarehouse = len(warehousevals)
-        days = pd.DataFrame([int(x[:2]) for x in warehousevals['DaysToShip']])
+        days = pd.DataFrame(warehousevals['DaysToShip'])# pd.DataFrame([int(x[:2]) for x in warehousevals['DaysToShip']])
         sumdays = days.sum() #need to sum all shippingdays where warehousecode = warehouse then divide by num of warehouses with shipping code
         average = sumdays/numwarehouse
         warehousedata.append([warehouse, average[0].round(2), days.median()[0], days.max()[0], days.min()[0]])
@@ -56,46 +65,47 @@ def main() :    #what do I want to solve here?
     
     #the numbers are very similar, maybe check to see from month to month how this changes. This also tells us its not a warehouse specific issue. It may be best reevaluate how
     #we get orders ready. Whether this time is reasonable or not. Maybe its fine.
-
-    #lets see month to month how it goes
-    sales['DaysToShip'] = [int(x[:2]) for x in sales['DaysToShip']]
-    sales['OrderDate'] = [datetime.datetime.strptime(d, "%m/%d/%Y") for d in sales['OrderDate']]
-    sales.insert(12, 'OrderMonth', [int(i.month) for i in sales["OrderDate"]], allow_duplicates=True)
+    
     sales.sort_values('OrderMonth', inplace = True)
 
     months = [x + 1 for x in range(12)]
-    monthlywarehouse = sales[['WarehouseCode', 'DaysToShip', 'OrderMonth']].groupby(['OrderMonth', 'WarehouseCode']).mean().reset_index()
+    monthlywarehouse = sales[['DaysToShip', 'OrderMonth']].groupby(['OrderMonth']).mean().reset_index()
     print(monthlywarehouse)
-   
 
 
-    
-
-    size = plt.subplots(figsize = (15,15))
 
     X = months
     
     X_axis = np.arange(1, 13, 1) 
-    print(X_axis)
+
+    ax2.plot(X, monthlywarehouse['DaysToShip'])
+    ax2.set_xticks(np.arange(len(X_axis)+1))
+
+    ax4_twin = ax4.twinx()
+    ax4_twin.plot(X, monthlywarehouse['DaysToShip'], color = 'red')
+    ax4_twin.spines['right'].set_color('red')
+    ax4_twin.set_ylabel('Average Days to Ship')
+
+    #ax4.set_xticks(np.arange(len(X_axis)+1))
 
     #add trendline to plot
-
+    '''
     i = 0.1
     for ware in warehouses :
         y = monthlywarehouse[(monthlywarehouse['WarehouseCode'] == ware)]['DaysToShip']
         z = np.polyfit(X, y, 4)
         p = np.poly1d(z)
-        ax2.scatter(X, y, label = ware)
-        ax2.plot(X, p(X))
+        ax2.plot(X, y, label = ware)
+        #ax2.plot(X, p(X))
         #ax1.plot(X_axis-(.5) + i, monthlywarehouse[(monthlywarehouse['WarehouseCode'] == y)]['DaysToShip'], 0.1, label = y)
         i = i + 0.1
 
     ax2.set_xlabel("Month") 
     ax2.set_ylabel("Average Days to Ship Order") 
     ax2.set_title("Monthly Average of Days to Ship by Warehouse") 
-    ax2.legend()
-    ax2.set_xticks(np.arange(len(X_axis)+1))
-    fig.show()
+    ax2.legend(fontsize = 6)
+    
+    '''
 
     #expected sales based on time
     #step 2: Break down the data by year
@@ -105,12 +115,14 @@ def main() :    #what do I want to solve here?
         #create new df for each year
         #sum sales for that year
 
-    sales.insert(13, 'OrderYear', [int(i.year) for i in sales["OrderDate"]], allow_duplicates=True)
-    yearlysales = sales[['Order Quantity', 'OrderYear']].groupby(['OrderYear']).sum().reset_index()
+    yearlysales = sales[['Profits', 'OrderYear']].groupby(['OrderYear']).sum().reset_index()
     print(yearlysales)
 
-    ax3.scatter(yearlysales['OrderYear'], yearlysales['Order Quantity'], label="ogga")
-    ax3.set_xticks(yearlysales['OrderYear'])
+    ax3.scatter(yearlysales['OrderYear'], yearlysales['Profits'], label="Profits Year to Year (2018-2020)")
+    ax3.set_xticks(list(yearlysales['OrderYear']))
+    ax3.set_xlabel("Year")
+    ax3.set_ylabel("Profits in $")
+    ax3.set_title("Profits in $ From 2018-2020 (2018 missing data for first 5 months)")
 
     #step 3: find sales by month
         #we can loop through each year, loop through each month
@@ -118,10 +130,8 @@ def main() :    #what do I want to solve here?
         # then we have monthly sales for each month in each year 
 
     #print([(quan, cost, price, disc) for [quan, cost, price, disc] in zip(sales["Order Quantity"],sales["Unit Cost"], sales["Unit Price"], sales["Discount Applied"]) if float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))) < 0])
-
-    sales.insert(14, 'Profits', [float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))) for [quan, cost, price, disc] in zip(sales["Order Quantity"],sales["Unit Cost"], sales["Unit Price"], sales["Discount Applied"])])
     
-    monthlyyearlysales = sales[['OrderMonth', 'OrderYear', 'Order Quantity']].groupby(['OrderMonth', 'OrderYear']).sum().reset_index()
+    monthlyyearlysales = sales[['OrderMonth', 'OrderYear', 'Order Quantity']].groupby(['OrderMonth', 'OrderYear']).count().reset_index()
     monthlyyearlysales.drop(monthlyyearlysales[monthlyyearlysales['Order Quantity'] < 100].index, inplace = True)
     print(monthlyyearlysales)
 
@@ -130,34 +140,42 @@ def main() :    #what do I want to solve here?
         y = monthlyyearlysales[(monthlyyearlysales['OrderYear'] == year)]['Order Quantity']
         z = np.polyfit(X[12-len(y):], y, 1)
         p = np.poly1d(z)
-        i = 12-len(y)
+        #i = 12-len(y)
+        j = 12-len(y)
         while len(y) < 12 :
             #print(p(i))
-            y = pd.DataFrame([int(p(i))] + list(y))
-
-            i = i + 1
+            y = [int(p(j))] + list(y)
+            print(str(j) + " is " + str(int(p(j))))
+            j = j - 1
         
-        print(len(y))
+        #print(len(y))
         print(y)
+        y = list(y)
         #ax4.bar(X, y, label = year)
-        #ax4.plot(X, p(X))
-        ax4.bar(X_axis-(.63/2) + i, y, 0.33/2, label = year)
+        #ax4.plot(X, p(X))s
+        ax4.bar(X_axis-(.465) + i, y, 0.33/2, label = str(year))
         i = i + (0.33/2)
 
     ax4.set_xlabel("Month") 
     ax4.set_ylabel("Total Number of Sales") 
-    ax4.set_title("Monthly Sales Over 3 Years") 
-    #ax4.legend()
+    ax4.set_title("Monthly Sales Over 3 Years (data for months 1-5 2018 generated by best fit)") 
+    ax4.legend(fontsize = 5)
     ax4.set_xticks(np.arange(len(X_axis)+1))
-    fig.show()
 
+
+    fig.tight_layout()
     plt.show()    
+
+
     #step 4: figure out which months have the highest sales,
     # but check against multiple years to make sure its a trend
         #this will come from graphing it, figure that out later
+
+
     #step 5: break this data into sales team, sales format, and store
         #we have sales for each month so we just need to sort by team
-    
+        #group by month, sales format
+        #group by month, store
     #
     
 
