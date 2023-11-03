@@ -25,6 +25,7 @@ def main() :    #what do I want to solve here?
     sales.insert(13, 'OrderYear', [int(i.year) for i in sales["OrderDate"]], allow_duplicates=True)
     sales.insert(14, 'Profits', [float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))) for [quan, cost, price, disc] in zip(sales["Order Quantity"],sales["Unit Cost"], sales["Unit Price"], sales["Discount Applied"])])
 
+    #sales.drop(sales[sales['OrderYear'] == 2018].index, inplace = True)
 
     #figure out late shipments by warehouse (step 1-4 done in preprocessing)
     #step 1: read in data
@@ -78,15 +79,16 @@ def main() :    #what do I want to solve here?
     
     X_axis = np.arange(1, 13, 1) 
 
-    ax2.plot(X, monthlywarehouse['DaysToShip'])
+    #ax2.plot(X, monthlywarehouse['DaysToShip'])
+    #ax2.set_xticks(np.arange(len(X_axis)+1))
+
+    ax2_twin = ax2.twinx()
+    ax2_twin.plot(X, monthlywarehouse['DaysToShip'], color = 'red')
+    ax2_twin.scatter(X, monthlywarehouse['DaysToShip'], color = 'red')
+    ax2_twin.spines['right'].set_color('red')
+    ax2_twin.set_ylabel('Average Days to Ship')
+
     ax2.set_xticks(np.arange(len(X_axis)+1))
-
-    ax4_twin = ax4.twinx()
-    ax4_twin.plot(X, monthlywarehouse['DaysToShip'], color = 'red')
-    ax4_twin.spines['right'].set_color('red')
-    ax4_twin.set_ylabel('Average Days to Ship')
-
-    #ax4.set_xticks(np.arange(len(X_axis)+1))
 
     #add trendline to plot
     '''
@@ -114,15 +116,17 @@ def main() :    #what do I want to solve here?
         #loop through the years
         #create new df for each year
         #sum sales for that year
-
-    yearlysales = sales[['Profits', 'OrderYear']].groupby(['OrderYear']).sum().reset_index()
+    '''
+    yearlysales = sales[['Order Quantity', 'OrderYear']].groupby(['OrderYear']).sum().reset_index()
     print(yearlysales)
 
-    ax3.scatter(yearlysales['OrderYear'], yearlysales['Profits'], label="Profits Year to Year (2018-2020)")
+    ax3.scatter(yearlysales['OrderYear'], yearlysales['Order Quantity'], label="Profits Year to Year (2018-2020)")
     ax3.set_xticks(list(yearlysales['OrderYear']))
     ax3.set_xlabel("Year")
     ax3.set_ylabel("Profits in $")
     ax3.set_title("Profits in $ From 2018-2020 (2018 missing data for first 5 months)")
+    ''' #this stuff just doesn't seem useful due to the missing data
+
 
     #step 3: find sales by month
         #we can loop through each year, loop through each month
@@ -131,10 +135,44 @@ def main() :    #what do I want to solve here?
 
     #print([(quan, cost, price, disc) for [quan, cost, price, disc] in zip(sales["Order Quantity"],sales["Unit Cost"], sales["Unit Price"], sales["Discount Applied"]) if float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))) < 0])
     
-    monthlyyearlysales = sales[['OrderMonth', 'OrderYear', 'Order Quantity']].groupby(['OrderMonth', 'OrderYear']).count().reset_index()
+    monthlyyearlysales = sales[['OrderMonth', 'OrderYear', 'Order Quantity']].groupby(['OrderMonth', 'OrderYear']).sum().reset_index()
     monthlyyearlysales.drop(monthlyyearlysales[monthlyyearlysales['Order Quantity'] < 100].index, inplace = True)
+    ys = []
+    for year in np.sort(monthlyyearlysales['OrderYear'].unique()) :
+        y = monthlyyearlysales[(monthlyyearlysales['OrderYear'] == year)]['Order Quantity']
+        z = np.polyfit(X[12-len(y):], y, 1)
+        p = np.poly1d(z)
+        #i = 12-len(y)
+        j = 12-len(y) + 1
+        while len(y) < 12 :
+            #print(p(i))
+            
+            y = [int(p(j))] + list(y)
+            print(str(j) + " is " + str(int(p(j))))
+            j = j - 1
+            ys.append([j, 2018, p(j)])
+
+    monthlyyearlysales = pd.concat([monthlyyearlysales, pd.DataFrame(ys, columns=['OrderMonth', 'OrderYear', 'Order Quantity'])], ignore_index=True)
+    print("--------------")
     print(monthlyyearlysales)
 
+    yearlysales = monthlyyearlysales [['OrderYear', 'Order Quantity']].groupby(['OrderYear']).sum().reset_index()
+    print(yearlysales)
+    #ax2.plot(yearlysales['OrderYear'], yearlysales['Order Quantity'], label = "idk")
+
+    print("-----")
+    print(monthlyyearlysales.sort_values('OrderMonth'))   
+
+    #ax3.scatter(np.sort(sales['OrderYear'].unique()), ys)
+
+    monthlysales = sales[['OrderMonth', 'Order Quantity']].groupby(['OrderMonth']).sum().reset_index()
+    monthlysales.drop(monthlysales[monthlysales['Order Quantity'] < 100].index, inplace = True)
+    print(monthlysales)
+
+    ax2.plot(X, monthlysales['Order Quantity'], color = 'black')
+    ax2.scatter(X, monthlysales['Order Quantity'], color = 'black')
+
+    '''
     i = 0.3
     for year in np.sort(monthlyyearlysales['OrderYear'].unique()) :
         y = monthlyyearlysales[(monthlyyearlysales['OrderYear'] == year)]['Order Quantity']
@@ -155,16 +193,18 @@ def main() :    #what do I want to solve here?
         #ax4.plot(X, p(X))s
         ax4.bar(X_axis-(.465) + i, y, 0.33/2, label = str(year))
         i = i + (0.33/2)
+    '''
 
-    ax4.set_xlabel("Month") 
-    ax4.set_ylabel("Total Number of Sales") 
-    ax4.set_title("Monthly Sales Over 3 Years (data for months 1-5 2018 generated by best fit)") 
-    ax4.legend(fontsize = 5)
-    ax4.set_xticks(np.arange(len(X_axis)+1))
+    ax2.set_xlabel("Month") 
+    ax2.set_ylabel("Total Number of Items Sold") 
+    ax2.set_title("Monthly Sales Over 3 Years (data for months 1-5 2018 generated by best fit)") 
+    ax2.legend(fontsize = 5)
+    ax2.set_xticks(np.arange(len(X_axis)+1))
+
+    
 
 
-    fig.tight_layout()
-    plt.show()    
+      
 
 
     #step 4: figure out which months have the highest sales,
@@ -177,7 +217,41 @@ def main() :    #what do I want to solve here?
         #group by month, sales format
         #group by month, store
     #
-    
+
+    saleschannel = sales[['Sales Channel', 'Order Quantity', 'OrderMonth']]
+    channels = sales['Sales Channel'].unique()
+    saleschanneldata = saleschannel[['Sales Channel', 'Order Quantity']].groupby(['Sales Channel']).sum().reset_index()
+    ax3.pie(saleschanneldata['Order Quantity'], labels = channels)
+    ax3.set_title("Breakdown of Sales by Sales Channel")
+
+    saleschannelmonthly = saleschannel.groupby(['Sales Channel', 'OrderMonth']).sum().reset_index()
+    print(saleschannelmonthly)
+
+    colors=['blue', 'red', 'green', 'orange']
+    i = 0
+    for channel in saleschannelmonthly['Sales Channel'].unique() :
+        y = saleschannelmonthly[(saleschannelmonthly['Sales Channel'] == channel)]['Order Quantity']
+        ax4.plot(X_axis, y, label = channel, color=colors[i])
+        z = np.polyfit(X, y, 1)
+        p = np.poly1d(z)
+        ax4.plot(X, p(X), color=colors[i])
+        #ax1.plot(X_axis-(.5) + i, monthlywarehouse[(monthlywarehouse['WarehouseCode'] == y)]['DaysToShip'], 0.1, label = y)
+        i = i + 1
+    ax4.set_xticks(np.arange(len(X_axis)+1))
+    ax4.legend()
+
+    #look at unit cost changes over the years
+
+    fig.tight_layout()
+    plt.show()  
+
+
+
+
+
+    #analyze the data from sales teams. analyze raw sales (not use item quantity), items sold, and, profits 
+
+    salesteam = sales['_SalesTeamID', 'Order Quantity', 'Unit Cost', 'Unit Price'] #we can use these fields to find ^
 
 '''
 df = pd.read_csv("US_Regional_Sales_Data_PreProcessed_To_Use.csv")
