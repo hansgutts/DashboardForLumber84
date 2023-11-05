@@ -74,6 +74,8 @@ def ConvertDates(df) : #change date fromat from eu to us (dd/mm/yyyy -> mm/dd/yy
         return -1 #if there was a previous error just send the error down the line
 
 #process the dataframe
+salesdata.isnull().sum()
+
 salesdata = DropRows(salesdata) 
 salesdata = CheckCostvsPrice(salesdata)
 salesdata = ConvertDates(salesdata)

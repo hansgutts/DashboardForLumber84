@@ -10,7 +10,7 @@ def main() :    #what do I want to solve here?
                 #figure out expected sales from year to year, including growth
                 #expected sales for each time of year
 
-    fig, ((ax1, ax2),(ax3, ax4)) = plt.subplots(2, 2, gridspec_kw={'width_ratios': [1, 2]})
+    fig, ((ax1, ax2),(ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2) #,gridspec_kw={'width_ratios': [1, 2]})
     fig.suptitle("84 Lumber Co. Dashboard")
     
     plt.setp(ax1.get_xticklabels(), rotation=-30, ha='left', fontsize=8)
@@ -61,6 +61,7 @@ def main() :    #what do I want to solve here?
     warehousedata = pd.DataFrame(warehousedata, columns=['WarehouseCode', 'AverageDaysToShip', 'MedianDaysToShip', 'MaxDaysToShip', 'MinDaysToShip'])
     ax1.bar(warehousedata['WarehouseCode'], warehousedata['AverageDaysToShip'], label='Warehouse Code')
     ax1.set_ylabel("Average Days to Ship Order")
+    ax1.set_xlabel("Warehouse Code")
     ax1.set_title("Average of Days to Ship by Warehouse")
     
     
@@ -218,9 +219,22 @@ def main() :    #what do I want to solve here?
         #group by month, store
     #
 
-    saleschannel = sales[['Sales Channel', 'Order Quantity', 'OrderMonth']]
+    saleschannel = sales[['Sales Channel', 'Order Quantity', 'OrderMonth', 'OrderYear']]
+    saleschanneldata = saleschannel.groupby(['Sales Channel', 'OrderYear']).sum().reset_index()
     channels = sales['Sales Channel'].unique()
+    print('+================+')
+    print(saleschanneldata)
+
+    #ax3.set_title('Breakdown of Sales Channel in 2018')
+    #ax3.pie(saleschanneldata[saleschanneldata['OrderYear'] == 2018]['Order Quantity'], labels = channels)
+    #ax5.set_title('Breakdown of Sales Channel in 2019')
+    #ax5.pie(saleschanneldata[saleschanneldata['OrderYear'] == 2019]['Order Quantity'], labels = channels)
+    #ax6.set_title('Breakdown of Sales Channel in 2020')
+    #ax6.pie(saleschanneldata[saleschanneldata['OrderYear'] == 2020]['Order Quantity'], labels = channels)
+
+    
     saleschanneldata = saleschannel[['Sales Channel', 'Order Quantity']].groupby(['Sales Channel']).sum().reset_index()
+    #print(saleschanneldata)
     ax3.pie(saleschanneldata['Order Quantity'], labels = channels)
     ax3.set_title("Breakdown of Sales by Sales Channel")
 
@@ -241,6 +255,8 @@ def main() :    #what do I want to solve here?
     ax4.legend()
 
     #look at unit cost changes over the years 
+    
+
 
     #analyze the data from sales teams. analyze raw sales (not use item quantity), items sold, and, profits 
 
@@ -249,13 +265,24 @@ def main() :    #what do I want to solve here?
     salesteamtotal = salesteam[['_SalesTeamID', 'Order Quantity']].groupby('_SalesTeamID').sum().reset_index()
     
     salesteamprofits = pd.DataFrame([(steam, round(float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))), 2)) for [steam, quan, cost, price, disc] in zip(salesteam['_SalesTeamID'], salesteam["Order Quantity"],salesteam["Unit Cost"], salesteam["Unit Price"], salesteam["Discount Applied"])], columns=['SalesTeam', 'Profits']).groupby('SalesTeam').sum().reset_index()
-    
-    
-    print("-------------------------")
-    print(salesteam)
-    print(salesteamraw.sort_values('Order Quantity', ascending=False))
-    print(salesteamtotal.sort_values('Order Quantity', ascending=False))
-    print(salesteamprofits.sort_values('Profits', ascending=False))
+
+    salesteamraw.sort_values('Order Quantity', ascending=False, inplace=True)
+    #not super helpful as a sale of 15 things is more valuable than a sale of 1
+
+    salesteamtotal.sort_values('Order Quantity', ascending=False,  inplace=True)
+
+    salesteamprofits.sort_values('Profits', ascending=False, inplace=True)
+
+    #ax6.bar(np.arange(len(salesteamraw['_SalesTeamID'])), salesteamraw['Order Quantity'], label = salesteamraw['_SalesTeamID'])
+    #ax6.set_xticks(np.arange(len(salesteamraw)), list(salesteamraw['_SalesTeamID']))
+
+    ax5.bar(np.arange(len(salesteamtotal['_SalesTeamID'])), salesteamtotal['Order Quantity'], label = salesteamtotal['_SalesTeamID'])
+    ax5.set_xticks(np.arange(len(salesteamtotal)), list(salesteamtotal['_SalesTeamID']))
+
+    ax6.bar(np.arange(len(salesteamprofits['SalesTeam'])), salesteamprofits['Profits'], label = salesteamprofits['SalesTeam'])
+    ax6.set_xticks(np.arange(len(salesteamprofits)), list(salesteamprofits['SalesTeam']))
+
+
 
     
     fig.tight_layout()
