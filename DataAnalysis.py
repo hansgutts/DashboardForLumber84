@@ -71,7 +71,7 @@ def main() :    #what do I want to solve here?
 
     months = [x + 1 for x in range(12)]
     monthlywarehouse = sales[['DaysToShip', 'OrderMonth']].groupby(['OrderMonth']).mean().reset_index()
-    print(monthlywarehouse)
+    #print(monthlywarehouse)
 
 
 
@@ -148,26 +148,26 @@ def main() :    #what do I want to solve here?
             #print(p(i))
             
             y = [int(p(j))] + list(y)
-            print(str(j) + " is " + str(int(p(j))))
+            #print(str(j) + " is " + str(int(p(j))))
             j = j - 1
             ys.append([j, 2018, p(j)])
 
     monthlyyearlysales = pd.concat([monthlyyearlysales, pd.DataFrame(ys, columns=['OrderMonth', 'OrderYear', 'Order Quantity'])], ignore_index=True)
-    print("--------------")
-    print(monthlyyearlysales)
+    #print("--------------")
+    #print(monthlyyearlysales)
 
     yearlysales = monthlyyearlysales [['OrderYear', 'Order Quantity']].groupby(['OrderYear']).sum().reset_index()
-    print(yearlysales)
+    #print(yearlysales)
     #ax2.plot(yearlysales['OrderYear'], yearlysales['Order Quantity'], label = "idk")
 
-    print("-----")
-    print(monthlyyearlysales.sort_values('OrderMonth'))   
+    #print("-----")
+    #print(monthlyyearlysales.sort_values('OrderMonth'))   
 
     #ax3.scatter(np.sort(sales['OrderYear'].unique()), ys)
 
     monthlysales = sales[['OrderMonth', 'Order Quantity']].groupby(['OrderMonth']).sum().reset_index()
     monthlysales.drop(monthlysales[monthlysales['Order Quantity'] < 100].index, inplace = True)
-    print(monthlysales)
+    #print(monthlysales)
 
     ax2.plot(X, monthlysales['Order Quantity'], color = 'black')
     ax2.scatter(X, monthlysales['Order Quantity'], color = 'black')
@@ -234,24 +234,33 @@ def main() :    #what do I want to solve here?
         ax4.plot(X_axis, y, label = channel, color=colors[i])
         z = np.polyfit(X, y, 1)
         p = np.poly1d(z)
-        ax4.plot(X, p(X), color=colors[i])
+        ax4.plot(X, p(X), color=colors[i], linestyle='dashed')
         #ax1.plot(X_axis-(.5) + i, monthlywarehouse[(monthlywarehouse['WarehouseCode'] == y)]['DaysToShip'], 0.1, label = y)
         i = i + 1
     ax4.set_xticks(np.arange(len(X_axis)+1))
     ax4.legend()
 
-    #look at unit cost changes over the years
-
-    fig.tight_layout()
-    plt.show()  
-
-
-
-
+    #look at unit cost changes over the years 
 
     #analyze the data from sales teams. analyze raw sales (not use item quantity), items sold, and, profits 
 
-    salesteam = sales['_SalesTeamID', 'Order Quantity', 'Unit Cost', 'Unit Price'] #we can use these fields to find ^
+    salesteam = sales[['_SalesTeamID', 'Order Quantity', 'Unit Cost', 'Unit Price', 'Discount Applied']] #we can use these fields to find ^
+    salesteamraw = salesteam[['_SalesTeamID', 'Order Quantity']].groupby('_SalesTeamID').count().reset_index()
+    salesteamtotal = salesteam[['_SalesTeamID', 'Order Quantity']].groupby('_SalesTeamID').sum().reset_index()
+    
+    salesteamprofits = pd.DataFrame([(steam, round(float(float(quan) * ((float(price.replace(",", "")) * (1-float(disc))) - float(cost.replace(",", "")))), 2)) for [steam, quan, cost, price, disc] in zip(salesteam['_SalesTeamID'], salesteam["Order Quantity"],salesteam["Unit Cost"], salesteam["Unit Price"], salesteam["Discount Applied"])], columns=['SalesTeam', 'Profits']).groupby('SalesTeam').sum().reset_index()
+    
+    
+    print("-------------------------")
+    print(salesteam)
+    print(salesteamraw.sort_values('Order Quantity', ascending=False))
+    print(salesteamtotal.sort_values('Order Quantity', ascending=False))
+    print(salesteamprofits.sort_values('Profits', ascending=False))
+
+    
+    fig.tight_layout()
+    plt.show() 
+
 
 '''
 df = pd.read_csv("US_Regional_Sales_Data_PreProcessed_To_Use.csv")
